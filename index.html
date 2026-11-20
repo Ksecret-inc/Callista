@@ -1,0 +1,475 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Callista 매출 대시보드</title>
+<style>
+:root {
+  color-scheme: light;
+  --page: #f9f9f7;
+  --surface: #fcfcfb;
+  --ink: #0b0b0b;
+  --ink-2: #52514e;
+  --muted: #898781;
+  --grid: #e1e0d9;
+  --axis: #c3c2b7;
+  --border: rgba(11,11,11,0.10);
+  --wash: rgba(11,11,11,0.05);
+  --accent: #2a78d6;
+  --accent-soft: #cde2fb;
+  --up: #006300;
+  --down: #d03b3b;
+  --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a; --s4: #eda100; --s5: #e87ba4;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --page: #0d0d0d; --surface: #1a1a19; --ink: #f0efec; --ink-2: #c3c2b7;
+    --muted: #898781; --grid: #2c2c2a; --axis: #383835;
+    --border: rgba(255,255,255,0.10); --wash: rgba(255,255,255,0.06);
+    --accent: #3987e5; --accent-soft: #184f95; --up: #0ca30c; --down: #e66767;
+    --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500; --s5: #d55181;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --page: #0d0d0d; --surface: #1a1a19; --ink: #f0efec; --ink-2: #c3c2b7;
+  --muted: #898781; --grid: #2c2c2a; --axis: #383835;
+  --border: rgba(255,255,255,0.10); --wash: rgba(255,255,255,0.06);
+  --accent: #3987e5; --accent-soft: #184f95; --up: #0ca30c; --down: #e66767;
+  --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500; --s5: #d55181;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--page); color: var(--ink);
+  font: 14px/1.5 system-ui, -apple-system, "Segoe UI", "Malgun Gothic", sans-serif;
+}
+.wrap { max-width: 1200px; margin: 0 auto; padding: 24px 16px 48px; }
+header { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+h1 { font-size: 22px; margin: 0; }
+.sub { color: var(--ink-2); margin: 4px 0 0; }
+h2 { font-size: 15px; margin: 0; }
+.card {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px;
+}
+.filters { display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: center; margin: 20px 0 16px; padding: 12px 16px; }
+.fgroup { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.flabel { color: var(--muted); font-size: 12px; margin-right: 2px; }
+select, button { font: inherit; color: var(--ink); }
+select {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 4px 8px;
+}
+.chip {
+  border: 1px solid var(--border); background: transparent; border-radius: 999px;
+  padding: 3px 10px; cursor: pointer; font-size: 13px; display: inline-flex; align-items: center; gap: 6px;
+}
+.chip:hover { background: var(--wash); }
+.chip[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); }
+.chip[aria-pressed="false"] { color: var(--muted); }
+.seg { display: inline-flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+.seg button { border: 0; background: transparent; padding: 4px 10px; cursor: pointer; font-size: 13px; }
+.seg button + button { border-left: 1px solid var(--border); }
+.seg button[aria-pressed="true"] { background: var(--accent-soft); font-weight: 600; }
+.reset { border: 1px solid var(--border); background: transparent; border-radius: 8px; padding: 4px 10px; cursor: pointer; margin-left: auto; }
+.reset:hover { background: var(--wash); }
+.selnote { color: var(--ink-2); font-size: 13px; min-height: 20px; margin: -4px 0 12px; }
+.selnote b { color: var(--ink); }
+.kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 12px; }
+.kpi .k { color: var(--ink-2); font-size: 13px; }
+.kpi .v { font-size: 26px; font-weight: 650; margin-top: 2px; }
+.kpi .d { font-size: 12px; color: var(--muted); margin-top: 2px; }
+.kpi .d.up { color: var(--up); } .kpi .d.down { color: var(--down); }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px; }
+.chead { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+.hint { color: var(--muted); font-size: 12px; }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 6px; margin: 4px 0 8px; }
+.sw { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+svg { display: block; width: 100%; overflow: visible; }
+svg text { fill: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+svg .lbl { fill: var(--ink-2); font-size: 12px; }
+svg .val { fill: var(--ink); font-size: 12px; }
+.hit { fill: transparent; cursor: pointer; }
+.hit:hover { fill: var(--wash); }
+.dim { opacity: 0.25; }
+#tip {
+  position: fixed; pointer-events: none; z-index: 10; display: none;
+  background: var(--surface); color: var(--ink); border: 1px solid var(--border);
+  border-radius: 8px; padding: 8px 10px; font-size: 12px; box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+  min-width: 160px;
+}
+#tip .t { font-weight: 600; margin-bottom: 4px; }
+#tip .r { display: flex; justify-content: space-between; gap: 12px; font-variant-numeric: tabular-nums; }
+#tip .r span:first-child { display: inline-flex; align-items: center; gap: 6px; color: var(--ink-2); }
+table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; font-size: 13px; }
+th, td { padding: 7px 8px; text-align: right; border-bottom: 1px solid var(--grid); white-space: nowrap; }
+th:first-child, td:first-child { text-align: left; }
+thead th { color: var(--ink-2); font-weight: 600; }
+tfoot td { font-weight: 650; border-bottom: 0; }
+td.cell { cursor: pointer; }
+td.cell:hover { background: var(--wash); }
+.tscroll { overflow-x: auto; }
+footer { color: var(--muted); font-size: 12px; margin-top: 20px; }
+@media (max-width: 860px) {
+  .kpis { grid-template-columns: repeat(2, 1fr); }
+  .grid2 { grid-template-columns: 1fr; }
+  .reset { margin-left: 0; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>매출 대시보드</h1>
+      <p class="sub">2026년 1–10월 · 제품 5종 · 채널 4곳</p>
+    </div>
+    <div class="seg" role="group" aria-label="지표">
+      <button data-metric="rev" aria-pressed="true">매출</button>
+      <button data-metric="qty" aria-pressed="false">판매수량</button>
+    </div>
+  </header>
+
+  <div class="card filters">
+    <div class="fgroup">
+      <span class="flabel">기간</span>
+      <select id="m0" aria-label="시작 월"></select>
+      <span class="flabel">~</span>
+      <select id="m1" aria-label="종료 월"></select>
+    </div>
+    <div class="fgroup" id="fp"><span class="flabel">제품</span></div>
+    <div class="fgroup" id="fc"><span class="flabel">채널</span></div>
+    <button class="reset" id="reset">필터 초기화</button>
+  </div>
+  <div class="selnote" id="selnote"></div>
+
+  <div class="kpis">
+    <div class="card kpi"><div class="k">총 매출</div><div class="v" id="kRev"></div><div class="d" id="kRevD"></div></div>
+    <div class="card kpi"><div class="k">판매수량</div><div class="v" id="kQty"></div><div class="d" id="kQtyD"></div></div>
+    <div class="card kpi"><div class="k">평균 판매단가</div><div class="v" id="kAsp"></div><div class="d" id="kAspD"></div></div>
+    <div class="card kpi"><div class="k">평균 할인율</div><div class="v" id="kDisc"></div><div class="d" id="kDiscD">정가 대비 매출 기준</div></div>
+  </div>
+
+  <div class="card">
+    <div class="chead">
+      <h2 id="monthTitle">월별 매출</h2>
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+        <span class="hint">막대를 클릭하면 그 달만 봅니다</span>
+        <div class="seg" role="group" aria-label="분해 기준">
+          <button data-split="product" aria-pressed="true">제품별</button>
+          <button data-split="channel" aria-pressed="false">채널별</button>
+        </div>
+      </div>
+    </div>
+    <div class="legend" id="legend"></div>
+    <div id="monthChart"></div>
+  </div>
+
+  <div class="grid2">
+    <div class="card">
+      <div class="chead"><h2 id="prodTitle">제품별 매출</h2><span class="hint">클릭: 이 제품만 보기</span></div>
+      <div id="prodChart"></div>
+    </div>
+    <div class="card">
+      <div class="chead"><h2 id="chTitle">채널별 매출</h2><span class="hint">클릭: 이 채널만 보기</span></div>
+      <div id="chChart"></div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:12px">
+    <div class="chead"><h2 id="tblTitle">제품 × 채널 매출</h2><span class="hint">칸을 클릭하면 그 제품·채널 조합만 봅니다</span></div>
+    <div class="tscroll"><table id="tbl"></table></div>
+  </div>
+
+  <footer>데이터 출처: Google 시트 매출 데이터(2026-01 ~ 2026-10, 200행). 매출 = 판매수량 × 정가 × (1 − 할인율).</footer>
+</div>
+<div id="tip"></div>
+
+<script>
+// ---- Data (from Google Sheet) ----
+const MONTHS = ['2026-01','2026-02','2026-03','2026-04','2026-05','2026-06','2026-07','2026-08','2026-09','2026-10'];
+const PRODUCTS = ['데일리 선크림','진정 시카 앰플','수분 장벽 크림','에센셜 마스크팩(10매)','약산성 클렌징폼'];
+const PRICE = [19000,24000,28000,15000,12000];
+const CHANNELS = ['올리브영','자사몰','쿠팡','아마존(해외)'];
+// [month(1-10), productIdx, channelIdx, qty, discount%, revenue]
+const RAW = [[1,0,0,439,20,6672800],[1,0,1,209,10,3573900],[1,0,2,330,20,5016000],[1,0,3,237,0,4503000],[1,1,0,600,0,14400000],[1,1,1,300,10,6480000],[1,1,2,487,0,11688000],[1,1,3,404,5,9211200],[1,2,0,587,0,16436000],[1,2,1,323,0,9044000],[1,2,2,502,0,14056000],[1,2,3,351,15,8353800],[1,3,0,795,5,11328750],[1,3,1,324,5,4617000],[1,3,2,521,20,6252000],[1,3,3,422,5,6013500],[1,4,0,746,0,8952000],[1,4,1,369,10,3985200],[1,4,2,497,10,5367600],[1,4,3,371,0,4452000],[2,0,0,566,10,9678600],[2,0,1,242,10,4138200],[2,0,2,365,0,6935000],[2,0,3,305,0,5795000],[2,1,0,595,0,14280000],[2,1,1,318,0,7632000],[2,1,2,456,15,9302400],[2,1,3,388,0,9312000],[2,2,0,650,0,18200000],[2,2,1,267,10,6728400],[2,2,2,426,20,9542400],[2,2,3,439,10,11062800],[2,3,0,921,20,11052000],[2,3,1,394,5,5614500],[2,3,2,627,10,8464500],[2,3,3,537,0,8055000],[2,4,0,715,20,6864000],[2,4,1,371,0,4452000],[2,4,2,528,10,5702400],[2,4,3,481,0,5772000],[3,0,0,741,0,14079000],[3,0,1,405,10,6925500],[3,0,2,496,15,8010400],[3,0,3,578,10,9883800],[3,1,0,664,20,12748800],[3,1,1,292,5,6657600],[3,1,2,373,0,8952000],[3,1,3,342,5,7797600],[3,2,0,506,5,13459600],[3,2,1,246,0,6888000],[3,2,2,314,20,7033600],[3,2,3,303,15,7211400],[3,3,0,844,15,10761000],[3,3,1,391,0,5865000],[3,3,2,546,0,8190000],[3,3,3,595,20,7140000],[3,4,0,733,5,8356200],[3,4,1,308,10,3326400],[3,4,2,425,20,4080000],[3,4,3,389,0,4668000],[4,0,0,968,20,14713600],[4,0,1,554,0,10526000],[4,0,2,710,5,12815500],[4,0,3,835,20,12692000],[4,1,0,680,10,14688000],[4,1,1,261,5,5950800],[4,1,2,503,5,11468400],[4,1,3,396,5,9028800],[4,2,0,406,0,11368000],[4,2,1,204,10,5140800],[4,2,2,260,0,7280000],[4,2,3,235,0,6580000],[4,3,0,737,10,9949500],[4,3,1,415,0,6225000],[4,3,2,591,0,8865000],[4,3,3,489,15,6234750],[4,4,0,691,20,6633600],[4,4,1,347,0,4164000],[4,4,2,513,20,4924800],[4,4,3,466,15,4753200],[5,0,0,1416,15,22868400],[5,0,1,590,10,10089000],[5,0,2,958,5,17291900],[5,0,3,1103,5,19909150],[5,1,0,662,20,12710400],[5,1,1,308,5,7022400],[5,1,2,422,20,8102400],[5,1,3,434,10,9374400],[5,2,0,328,10,8265600],[5,2,1,121,5,3218600],[5,2,2,221,0,6188000],[5,2,3,247,5,6570200],[5,3,0,751,20,9012000],[5,3,1,396,0,5940000],[5,3,2,594,20,7128000],[5,3,3,552,0,8280000],[5,4,0,747,10,8067600],[5,4,1,348,10,3758400],[5,4,2,480,10,5184000],[5,4,3,587,10,6339600],[6,0,0,1812,20,27542400],[6,0,1,647,5,11678350],[6,0,2,1025,5,18501250],[6,0,3,1108,5,19999400],[6,1,0,520,20,9984000],[6,1,1,281,5,6406800],[6,1,2,386,20,7411200],[6,1,3,473,15,9649200],[6,2,0,307,5,8166200],[6,2,1,117,10,2948400],[6,2,2,170,10,4284000],[6,2,3,189,5,5027400],[6,3,0,905,5,12896250],[6,3,1,329,10,4441500],[6,3,2,642,0,9630000],[6,3,3,595,15,7586250],[6,4,0,718,0,8616000],[6,4,1,279,10,3013200],[6,4,2,520,15,5304000],[6,4,3,584,10,6307200],[7,0,0,1657,15,26760550],[7,0,1,874,10,14945400],[7,0,2,1148,10,19630800],[7,0,3,1216,15,19638400],[7,1,0,623,0,14952000],[7,1,1,323,0,7752000],[7,1,2,395,20,7584000],[7,1,3,546,10,11793600],[7,2,0,310,15,7378000],[7,2,1,139,5,3697400],[7,2,2,200,0,5600000],[7,2,3,191,0,5348000],[7,3,0,878,10,11853000],[7,3,1,391,5,5571750],[7,3,2,634,0,9510000],[7,3,3,623,20,7476000],[7,4,0,668,15,6813600],[7,4,1,353,0,4236000],[7,4,2,501,15,5110200],[7,4,3,627,15,6395400],[8,0,0,1506,15,24321900],[8,0,1,771,10,13184100],[8,0,2,1230,10,21033000],[8,0,3,1333,0,25327000],[8,1,0,670,15,13668000],[8,1,1,296,5,6748800],[8,1,2,505,15,10302000],[8,1,3,486,20,9331200],[8,2,0,309,0,8652000],[8,2,1,135,10,3402000],[8,2,2,210,0,5880000],[8,2,3,222,10,5594400],[8,3,0,964,15,12291000],[8,3,1,455,5,6483750],[8,3,2,651,10,8788500],[8,3,3,734,0,11010000],[8,4,0,829,0,9948000],[8,4,1,314,0,3768000],[8,4,2,505,20,4848000],[8,4,3,608,0,7296000],[9,0,0,1133,0,21527000],[9,0,1,424,0,8056000],[9,0,2,672,10,11491200],[9,0,3,791,0,15029000],[9,1,0,637,15,12994800],[9,1,1,235,0,5640000],[9,1,2,466,20,8947200],[9,1,3,451,0,10824000],[9,2,0,425,10,10710000],[9,2,1,200,5,5320000],[9,2,2,345,0,9660000],[9,2,3,369,0,10332000],[9,3,0,888,10,11988000],[9,3,1,307,5,4374750],[9,3,2,638,0,9570000],[9,3,3,768,0,11520000],[9,4,0,739,10,7981200],[9,4,1,354,10,3823200],[9,4,2,537,10,5799600],[9,4,3,616,0,7392000],[10,0,0,773,5,13952650],[10,0,1,317,5,5721850],[10,0,2,541,0,10279000],[10,0,3,668,10,11422800],[10,1,0,573,0,13752000],[10,1,1,321,5,7318800],[10,1,2,376,0,9024000],[10,1,3,536,0,12864000],[10,2,0,655,0,18340000],[10,2,1,277,10,6980400],[10,2,2,432,10,10886400],[10,2,3,436,15,10376800],[10,3,0,776,10,10476000],[10,3,1,376,5,5358000],[10,3,2,528,20,6336000],[10,3,3,675,0,10125000],[10,4,0,772,20,7411200],[10,4,1,340,10,3672000],[10,4,2,530,10,5724000],[10,4,3,558,15,5691600]];
+const ROWS = RAW.map(([m,p,c,qty,disc,rev]) => ({ m, p, c, qty, disc, rev, list: qty * PRICE[p] }));
+
+// ---- State ----
+const S = {
+  m0: 1, m1: 10, month: null, metric: 'rev', split: 'product',
+  prod: new Set(PRODUCTS.map((_, i) => i)),
+  ch: new Set(CHANNELS.map((_, i) => i)),
+};
+
+// ---- Helpers ----
+const $ = id => document.getElementById(id);
+const NS = 'http://www.w3.org/2000/svg';
+const won = v => Math.round(v).toLocaleString('ko-KR') + '원';
+const short = v => {
+  if (S.metric === 'qty') return Math.round(v).toLocaleString('ko-KR') + '개';
+  if (v >= 1e8) return (v / 1e8).toFixed(v >= 1e9 ? 1 : 2).replace(/\.?0+$/, '') + '억';
+  if (v >= 1e4) return Math.round(v / 1e4).toLocaleString('ko-KR') + '만';
+  return Math.round(v).toLocaleString('ko-KR');
+};
+const fullVal = v => S.metric === 'qty' ? Math.round(v).toLocaleString('ko-KR') + '개' : won(v);
+const mLabel = m => Number(MONTHS[m - 1].slice(5)) + '월';
+const metricName = () => S.metric === 'rev' ? '매출' : '판매수량';
+const col = i => `var(--s${i + 1})`;
+const el = (tag, attrs = {}, parent) => {
+  const e = document.createElementNS(NS, tag);
+  for (const k in attrs) e.setAttribute(k, attrs[k]);
+  if (parent) parent.appendChild(e);
+  return e;
+};
+function filt({ ignoreProd = false, ignoreCh = false, ignoreMonth = false } = {}) {
+  return ROWS.filter(r =>
+    r.m >= S.m0 && r.m <= S.m1 &&
+    (ignoreMonth || S.month === null || r.m === S.month) &&
+    (ignoreProd || S.prod.has(r.p)) &&
+    (ignoreCh || S.ch.has(r.c)));
+}
+const sum = (rows, k) => rows.reduce((a, r) => a + r[k], 0);
+// Max for a 4-step axis whose ticks land on round numbers
+function niceMax(v) {
+  if (v <= 0) return 4;
+  const step = v / 4, e = Math.pow(10, Math.floor(Math.log10(step)));
+  for (const f of [1, 2, 2.5, 3, 4, 5, 6, 8, 10]) if (f * e >= step) return f * e * 4;
+  return 40 * e;
+}
+
+// ---- Tooltip ----
+const tip = $('tip');
+function showTip(ev, title, rows) {
+  tip.innerHTML = `<div class="t">${title}</div>` + rows.map(([name, val, color]) =>
+    `<div class="r"><span>${color ? `<i class="sw" style="background:${color}"></i>` : ''}${name}</span><span>${val}</span></div>`).join('');
+  tip.style.display = 'block';
+  const w = tip.offsetWidth, h = tip.offsetHeight;
+  let x = ev.clientX + 14, y = ev.clientY + 14;
+  if (x + w > innerWidth - 8) x = ev.clientX - w - 14;
+  if (y + h > innerHeight - 8) y = ev.clientY - h - 14;
+  tip.style.left = x + 'px'; tip.style.top = y + 'px';
+}
+const hideTip = () => tip.style.display = 'none';
+
+// ---- Filters UI ----
+function buildFilters() {
+  for (const id of ['m0', 'm1']) {
+    $(id).innerHTML = MONTHS.map((m, i) => `<option value="${i + 1}">${m}</option>`).join('');
+    $(id).addEventListener('change', () => {
+      S[id] = Number($(id).value);
+      if (S.m0 > S.m1) { if (id === 'm0') S.m1 = S.m0; else S.m0 = S.m1; }
+      if (S.month !== null && (S.month < S.m0 || S.month > S.m1)) S.month = null;
+      render();
+    });
+  }
+  PRODUCTS.forEach((p, i) => $('fp').appendChild(chip(p, 'prod', i)));
+  CHANNELS.forEach((c, i) => $('fc').appendChild(chip(c, 'ch', i)));
+  $('reset').addEventListener('click', () => {
+    S.m0 = 1; S.m1 = 10; S.month = null;
+    S.prod = new Set(PRODUCTS.map((_, i) => i)); S.ch = new Set(CHANNELS.map((_, i) => i));
+    render();
+  });
+  document.querySelectorAll('[data-metric]').forEach(b => b.addEventListener('click', () => { S.metric = b.dataset.metric; render(); }));
+  document.querySelectorAll('[data-split]').forEach(b => b.addEventListener('click', () => { S.split = b.dataset.split; render(); }));
+}
+function chip(label, key, i) {
+  const b = document.createElement('button');
+  b.className = 'chip'; b.dataset.key = key; b.dataset.i = i; b.textContent = label;
+  b.addEventListener('click', () => {
+    const set = S[key];
+    if (set.has(i)) { if (set.size > 1) set.delete(i); } else set.add(i);
+    render();
+  });
+  return b;
+}
+// Click on a bar: show only that item; click again on the solo item: show all.
+function solo(key, i, total) {
+  const set = S[key];
+  if (set.size === 1 && set.has(i)) S[key] = new Set([...Array(total).keys()]);
+  else S[key] = new Set([i]);
+  render();
+}
+
+// ---- KPIs ----
+function renderKpis() {
+  const rows = filt();
+  const rev = sum(rows, 'rev'), qty = sum(rows, 'qty'), list = sum(rows, 'list');
+  $('kRev').textContent = short2(rev);
+  $('kQty').textContent = qty.toLocaleString('ko-KR') + '개';
+  $('kAsp').textContent = qty ? won(rev / qty) : '–';
+  $('kDisc').textContent = list ? ((1 - rev / list) * 100).toFixed(1) + '%' : '–';
+
+  // Comparison: selected month (or last month of range) vs the month before it
+  const cur = S.month ?? (S.m0 === S.m1 ? S.m0 : null);
+  const setD = (id, a, b, fmt) => {
+    const d = $(id);
+    if (b === null || !b) { d.className = 'd'; d.textContent = fmt; return; }
+    const pct = (a / b - 1) * 100;
+    d.className = 'd ' + (pct >= 0 ? 'up' : 'down');
+    d.textContent = `${pct >= 0 ? '▲' : '▼'} ${Math.abs(pct).toFixed(1)}% 전월 대비`;
+  };
+  if (cur && cur > 1) {
+    const prev = ROWS.filter(r => r.m === cur - 1 && S.prod.has(r.p) && S.ch.has(r.c));
+    const pRev = sum(prev, 'rev'), pQty = sum(prev, 'qty');
+    setD('kRevD', rev, pRev); setD('kQtyD', qty, pQty);
+    setD('kAspD', qty ? rev / qty : 0, pQty ? pRev / pQty : 0);
+  } else {
+    const n = S.month ? 1 : S.m1 - S.m0 + 1;
+    setD('kRevD', 0, null, n > 1 ? `월평균 ${short2(rev / n)}` : '비교할 전월 없음');
+    setD('kQtyD', 0, null, n > 1 ? `월평균 ${Math.round(qty / n).toLocaleString('ko-KR')}개` : '비교할 전월 없음');
+    setD('kAspD', 0, null, '매출 ÷ 판매수량');
+  }
+}
+const short2 = v => v >= 1e8 ? (v / 1e8).toFixed(2) + '억원' : Math.round(v / 1e4).toLocaleString('ko-KR') + '만원';
+
+// ---- Monthly stacked bar chart ----
+function renderMonthly() {
+  const box = $('monthChart');
+  const W = Math.max(320, box.clientWidth), H = 300;
+  const pad = { l: 52, r: 8, t: 12, b: 28 };
+  const keys = S.split === 'product' ? PRODUCTS : CHANNELS;
+  const active = S.split === 'product' ? S.prod : S.ch;
+  const k = S.split === 'product' ? 'p' : 'c';
+  const rows = filt({ ignoreMonth: true });
+  const months = []; for (let m = S.m0; m <= S.m1; m++) months.push(m);
+  const data = months.map(m => {
+    const segs = keys.map((_, i) => sum(rows.filter(r => r.m === m && r[k] === i), S.metric));
+    return { m, segs, total: segs.reduce((a, b) => a + b, 0) };
+  });
+  const max = niceMax(Math.max(...data.map(d => d.total)));
+  const iw = W - pad.l - pad.r, ih = H - pad.t - pad.b;
+  const band = iw / months.length, bw = Math.min(56, band * 0.62);
+  const y = v => pad.t + ih - (v / max) * ih;
+
+  const svg = el('svg', { viewBox: `0 0 ${W} ${H}`, height: H, role: 'img', 'aria-label': `월별 ${metricName()} 누적 막대 차트` });
+  for (let i = 0; i <= 4; i++) {
+    const v = max * i / 4, yy = y(v);
+    el('line', { x1: pad.l, x2: W - pad.r, y1: yy, y2: yy, stroke: i ? 'var(--grid)' : 'var(--axis)', 'stroke-width': 1 }, svg);
+    el('text', { x: pad.l - 8, y: yy + 4, 'text-anchor': 'end' }, svg).textContent = short(v);
+  }
+  data.forEach((d, j) => {
+    const cx = pad.l + band * j + band / 2, x = cx - bw / 2;
+    const g = el('g', { class: S.month !== null && S.month !== d.m ? 'dim' : '' }, svg);
+    let acc = 0;
+    const visible = d.segs.map((v, i) => v > 0 && active.has(i) ? i : -1).filter(i => i >= 0);
+    const topIdx = visible[visible.length - 1];
+    d.segs.forEach((v, i) => {
+      if (v <= 0 || !active.has(i)) return;
+      const y0 = y(acc), y1 = y(acc + v); acc += v;
+      const h = Math.max(0, y0 - y1 - 2); // 2px surface gap between segments
+      const top = y0 - h;
+      if (i === topIdx && h > 4) {
+        const r = 4;
+        el('path', { d: `M${x},${y0}V${top + r}Q${x},${top} ${x + r},${top}H${x + bw - r}Q${x + bw},${top} ${x + bw},${top + r}V${y0}Z`, fill: col(i) }, g);
+      } else {
+        el('rect', { x, y: top, width: bw, height: h, fill: col(i) }, g);
+      }
+    });
+    el('text', { x: cx, y: H - 8, 'text-anchor': 'middle', class: S.month === d.m ? 'val' : '' }, svg).textContent = mLabel(d.m);
+    const hit = el('rect', { x: pad.l + band * j, y: pad.t, width: band, height: ih, class: 'hit', rx: 6 }, svg);
+    hit.addEventListener('mousemove', ev => showTip(ev, `${MONTHS[d.m - 1]} · ${metricName()} ${fullVal(d.total)}`,
+      keys.map((name, i) => active.has(i) ? [name, fullVal(d.segs[i]), col(i)] : null).filter(Boolean).reverse()));
+    hit.addEventListener('mouseleave', hideTip);
+    hit.addEventListener('click', () => { S.month = S.month === d.m ? null : d.m; hideTip(); render(); });
+  });
+  box.replaceChildren(svg);
+
+  $('legend').innerHTML = keys.map((name, i) =>
+    `<button class="chip" data-legend="${i}" aria-pressed="${active.has(i)}"><i class="sw" style="background:${col(i)}"></i>${name}</button>`).join('');
+  $('legend').querySelectorAll('[data-legend]').forEach(b => b.addEventListener('click', () => {
+    const set = S.split === 'product' ? S.prod : S.ch, i = Number(b.dataset.legend);
+    if (set.has(i)) { if (set.size > 1) set.delete(i); } else set.add(i);
+    render();
+  }));
+}
+
+// ---- Horizontal bar chart (product / channel) ----
+function renderHBar(boxId, names, key, setKey) {
+  const box = $(boxId);
+  const rows = filt(setKey === 'prod' ? { ignoreProd: true } : { ignoreCh: true });
+  const vals = names.map((_, i) => sum(rows.filter(r => r[key] === i), S.metric));
+  const shown = vals.reduce((a, v, i) => a + (S[setKey].has(i) ? v : 0), 0);
+  const order = names.map((_, i) => i).sort((a, b) => vals[b] - vals[a]);
+  const W = Math.max(300, box.clientWidth), rowH = 40, labelW = Math.min(150, W * 0.36), valW = 96;
+  const H = order.length * rowH;
+  const max = Math.max(...vals) || 1;
+  const bw = W - labelW - valW;
+  const svg = el('svg', { viewBox: `0 0 ${W} ${H}`, height: H, role: 'img', 'aria-label': `${metricName()} 막대 차트` });
+  order.forEach((i, j) => {
+    const yy = j * rowH, on = S[setKey].has(i);
+    const g = el('g', { class: on ? '' : 'dim' }, svg);
+    el('text', { x: 0, y: yy + rowH / 2 + 4, class: 'lbl' }, g).textContent = names[i];
+    el('rect', { x: labelW, y: yy + 10, width: bw, height: rowH - 20, rx: 4, fill: 'var(--wash)' }, g);
+    const w = Math.max(2, (vals[i] / max) * bw);
+    el('rect', { x: labelW, y: yy + 10, width: w, height: rowH - 20, rx: 4, fill: 'var(--accent)' }, g);
+    el('text', { x: W, y: yy + rowH / 2 + 4, 'text-anchor': 'end', class: 'val' }, g).textContent = short(vals[i]);
+    const hit = el('rect', { x: 0, y: yy, width: W, height: rowH, class: 'hit', rx: 6 }, svg);
+    const total = vals.reduce((a, b) => a + b, 0);
+    hit.addEventListener('mousemove', ev => showTip(ev, names[i], [
+      [metricName(), fullVal(vals[i])],
+      ['비중', total ? (vals[i] / total * 100).toFixed(1) + '%' : '–'],
+      ['클릭', S[setKey].size === 1 && on ? '전체 보기' : '이것만 보기'],
+    ]));
+    hit.addEventListener('mouseleave', hideTip);
+    hit.addEventListener('click', () => { hideTip(); solo(setKey, i, names.length); });
+  });
+  box.replaceChildren(svg);
+}
+
+// ---- Pivot table ----
+function renderTable() {
+  const rows = filt();
+  const m = S.metric;
+  const cell = (p, c) => sum(rows.filter(r => r.p === p && r.c === c), m);
+  const cs = CHANNELS.map((_, c) => c).filter(c => S.ch.has(c));
+  const ps = PRODUCTS.map((_, p) => p).filter(p => S.prod.has(p));
+  const fmt = v => S.metric === 'qty' ? v.toLocaleString('ko-KR') : Math.round(v).toLocaleString('ko-KR');
+  let h = `<thead><tr><th>제품 \\ 채널</th>${cs.map(c => `<th>${CHANNELS[c]}</th>`).join('')}<th>합계</th></tr></thead><tbody>`;
+  for (const p of ps) {
+    const vals = cs.map(c => cell(p, c));
+    h += `<tr><td>${PRODUCTS[p]}</td>${vals.map((v, j) => `<td class="cell" data-p="${p}" data-c="${cs[j]}">${fmt(v)}</td>`).join('')}<td><b>${fmt(vals.reduce((a, b) => a + b, 0))}</b></td></tr>`;
+  }
+  const colTot = cs.map(c => ps.reduce((a, p) => a + cell(p, c), 0));
+  h += `</tbody><tfoot><tr><td>합계</td>${colTot.map(v => `<td>${fmt(v)}</td>`).join('')}<td>${fmt(colTot.reduce((a, b) => a + b, 0))}</td></tr></tfoot>`;
+  $('tbl').innerHTML = h;
+  $('tbl').querySelectorAll('td.cell').forEach(td => td.addEventListener('click', () => {
+    const p = Number(td.dataset.p), c = Number(td.dataset.c);
+    if (S.prod.size === 1 && S.ch.size === 1 && S.prod.has(p) && S.ch.has(c)) {
+      S.prod = new Set(PRODUCTS.map((_, i) => i)); S.ch = new Set(CHANNELS.map((_, i) => i));
+    } else { S.prod = new Set([p]); S.ch = new Set([c]); }
+    render();
+  }));
+}
+
+// ---- Render ----
+function render() {
+  $('m0').value = S.m0; $('m1').value = S.m1;
+  document.querySelectorAll('.filters .chip').forEach(b => b.setAttribute('aria-pressed', S[b.dataset.key].has(Number(b.dataset.i))));
+  document.querySelectorAll('[data-metric]').forEach(b => b.setAttribute('aria-pressed', b.dataset.metric === S.metric));
+  document.querySelectorAll('[data-split]').forEach(b => b.setAttribute('aria-pressed', b.dataset.split === S.split));
+  const mn = metricName(), unit = S.metric === 'rev' ? '(원)' : '(개)';
+  $('monthTitle').textContent = `월별 ${mn}`;
+  $('prodTitle').textContent = `제품별 ${mn}`;
+  $('chTitle').textContent = `채널별 ${mn}`;
+  $('tblTitle').textContent = `제품 × 채널 ${mn} ${unit}`;
+
+  const parts = [];
+  parts.push(S.month ? `<b>${MONTHS[S.month - 1]}</b>만 보는 중` : `<b>${MONTHS[S.m0 - 1]} ~ ${MONTHS[S.m1 - 1]}</b>`);
+  if (S.prod.size < PRODUCTS.length) parts.push('제품: ' + [...S.prod].map(i => PRODUCTS[i]).join(', '));
+  if (S.ch.size < CHANNELS.length) parts.push('채널: ' + [...S.ch].map(i => CHANNELS[i]).join(', '));
+  $('selnote').innerHTML = parts.join(' · ');
+
+  renderKpis();
+  renderMonthly();
+  renderHBar('prodChart', PRODUCTS, 'p', 'prod');
+  renderHBar('chChart', CHANNELS, 'c', 'ch');
+  renderTable();
+}
+
+buildFilters();
+render();
+let rt; addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(render, 120); });
+</script>
+</body>
+</html>
